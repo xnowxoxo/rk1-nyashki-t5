@@ -1,55 +1,83 @@
-// OpenMP-версия: строки картинки делятся между потоками, расписание задаётся
-// снаружи через OMP_SCHEDULE (schedule(runtime)), поэтому static / dynamic / guided
-// и размер порции сравниваются без перекомпиляции.
-// Сборка: gcc -O3 -fopenmp omp.c -o omp -lm
-//
-// Почему расписание важно: тяжёлые строки (через середину множества) идут подряд.
-// При static без chunk они достаются нескольким средним потокам, остальные ждут.
-// static,1 и dynamic,1 раздают строки вперемешку, и нагрузка выравнивается.
+// Track 5: Mandelbrot set, 4096 x 4096, up to 2000 iterations. OpenMP: static / dynamic / guided.
+// Build: gcc -O3 -fopenmp omp.c -o omp -lm
+// Run:   OMP_SCHEDULE=dynamic,1 OMP_NUM_THREADS=8 ./omp <hash>   <hash> is printed by ./seq (the reference)
+// Output: version;p;time_s;CHECK, then a '#' line with the image hash and the load imbalance.
+
+#include <omp.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
-#include "mandel.h"
 
-int main(void) {
-    int n = mandel_size();
-    int *img = malloc((size_t)n * n * sizeof(int));
-    int nt = omp_get_max_threads();
-    uint64_t *work = calloc(nt, sizeof(uint64_t));   // итераций на поток — для дисбаланса
-    if (!img || !work) { fprintf(stderr, "malloc failed\n"); return 1; }
+#define N 4096
+#define MAXIT 2000
+#define XMIN (-2.0)
+#define YMIN (-1.5)
+#define D (3.0 / N)  // pixel size: the region is [-2, 1] x [-1.5, 1.5]
 
-    double t0 = omp_get_wtime();                      // замеряем только вычислительное ядро
-    #pragma omp parallel
+// Computes one image row, returns the iterations spent on it (the work, for load imbalance).
+static uint64_t row(int *img, int y) {
+    const double ci = YMIN + (y + 0.5) * D;
+    uint64_t work = 0;
+    for (int x = 0; x < N; x++) {
+        const double cr = XMIN + (x + 0.5) * D;
+        double zr = 0, zi = 0, zr2 = 0, zi2 = 0;
+        int it = 0;
+        while (it < MAXIT && zr2 + zi2 <= 4.0) {
+            zi = 2.0 * zr * zi + ci;
+            zr = zr2 - zi2 + cr;
+            zr2 = zr * zr;
+            zi2 = zi * zi;
+            it++;
+        }
+        img[(size_t)y * N + x] = it;
+        work += it;
+    }
+    return work;
+}
+
+// FNV-1a over all pixels in order: a wrong value or a misplaced row changes it.
+static uint64_t hash(const int *img) {
+    uint64_t h = 14695981039346656037ULL;
+    for (size_t k = 0; k < (size_t)N * N; k++) h = (h ^ (uint64_t)img[k]) * 1099511628211ULL;
+    return h;
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s <reference hash from ./seq>\n", argv[0]);
+        return 1;
+    }
+    const int p = omp_get_max_threads();
+    int *img = malloc((size_t)N * N * sizeof *img);
+    uint64_t work[256] = {0};
+    if (!img || p > 256) return 1;
+
+    double t = omp_get_wtime();
+#pragma omp parallel
     {
-        uint64_t my = 0;                              // своя сумма у каждого потока, без гонок
-        #pragma omp for schedule(runtime)
-        for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++) {
-                int it = mandel_pixel(x, y, n);
-                img[(long)y * n + x] = it;
-                my += it;
-            }
-        work[omp_get_thread_num()] = my;              // одна запись на поток после цикла
+        uint64_t local = 0;
+#pragma omp for schedule(runtime)  // static / static,1 / dynamic,1 / guided, taken from OMP_SCHEDULE
+        for (int y = 0; y < N; y++) local += row(img, y);
+        work[omp_get_thread_num()] = local;  // one write per thread, no race
     }
-    double t = omp_get_wtime() - t0;
+    t = omp_get_wtime() - t;
 
+    // must match the reference hash exactly
+    const uint64_t h = hash(img);
+    const int ok = h == strtoull(argv[1], NULL, 10);
+
+    // imbalance = busiest thread's work / average work (1.0 = perfect balance)
+    uint64_t mx = 0, sum = 0;
+    for (int i = 0; i < p; i++) {
+        sum += work[i];
+        if (work[i] > mx) mx = work[i];
+    }
     const char *sched = getenv("OMP_SCHEDULE");
-    if (!sched) sched = "default";
-    printf("omp_%s;%d;%.6f;%s\n", sched, nt, t, mandel_check(mandel_checksum(img, n), 0));
+    char ver[64];
+    snprintf(ver, sizeof ver, "omp-%s", sched ? sched : "default");
 
-    // Строка для анализа: работа самого загруженного и самого свободного потока.
-    // imbalance = max / среднее (1.0 — идеальный баланс)
-    uint64_t wmin = work[0], wmax = work[0], wsum = 0;
-    for (int i = 0; i < nt; i++) {
-        if (work[i] < wmin) wmin = work[i];
-        if (work[i] > wmax) wmax = work[i];
-        wsum += work[i];
-    }
-    printf("#detail;omp_%s;%d;work_min=%llu;work_max=%llu;imbalance=%.4f\n", sched, nt,
-           (unsigned long long)wmin, (unsigned long long)wmax,
-           wsum ? (double)wmax * nt / wsum : 1.0);
-
-    free(work);
+    printf("%s;%d;%.4f;CHECK: %s\n", ver, p, t, ok ? "OK" : "FAIL");
+    printf("# hash=%llu imbalance=%.3f\n", (unsigned long long)h, (double)mx * p / sum);
     free(img);
-    return 0;
+    return !ok;
 }

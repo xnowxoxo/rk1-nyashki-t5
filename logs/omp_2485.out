@@ -1,0 +1,159 @@
+# node: pbcn02
+# Thread(s) per core:  2
+# Core(s) per socket:  24
+# Socket(s):           2
+# Model name:          Intel(R) Xeon(R) Gold 6336Y CPU @ 2.40GHz
+# NUMA node0 CPU(s):   0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94
+# NUMA node1 CPU(s):   1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95
+# gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-20)
+version;p;time_s;CHECK
+seq;1;22.2582;CHECK: OK
+# hash=6551960294320693537
+seq;1;22.2588;CHECK: OK
+# hash=6551960294320693537
+seq;1;22.2575;CHECK: OK
+# hash=6551960294320693537
+omp-static;1;22.2621;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;1;22.2635;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;1;22.2636;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;2;11.1366;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;2;11.1365;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;2;11.1376;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static;4;10.8735;CHECK: OK
+# hash=6551960294320693537 imbalance=1.949
+omp-static;4;10.8741;CHECK: OK
+# hash=6551960294320693537 imbalance=1.949
+omp-static;4;10.8739;CHECK: OK
+# hash=6551960294320693537 imbalance=1.949
+omp-static;8;7.5570;CHECK: OK
+# hash=6551960294320693537 imbalance=2.707
+omp-static;8;7.5561;CHECK: OK
+# hash=6551960294320693537 imbalance=2.707
+omp-static;8;7.5551;CHECK: OK
+# hash=6551960294320693537 imbalance=2.707
+omp-static;16;4.3235;CHECK: OK
+# hash=6551960294320693537 imbalance=3.097
+omp-static;16;4.3247;CHECK: OK
+# hash=6551960294320693537 imbalance=3.097
+omp-static;16;4.3238;CHECK: OK
+# hash=6551960294320693537 imbalance=3.097
+omp-static;32;2.2341;CHECK: OK
+# hash=6551960294320693537 imbalance=3.194
+omp-static;32;2.2328;CHECK: OK
+# hash=6551960294320693537 imbalance=3.194
+omp-static;32;2.2356;CHECK: OK
+# hash=6551960294320693537 imbalance=3.194
+omp-static,1;1;22.2664;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;1;22.2634;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;1;22.2659;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;2;11.1376;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;2;11.1384;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;2;11.1373;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;4;5.5709;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;4;5.5717;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;4;5.5711;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;8;2.7890;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;8;2.7860;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;8;2.7872;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-static,1;16;1.3961;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-static,1;16;1.3940;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-static,1;16;1.3950;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-static,1;32;0.7445;CHECK: OK
+# hash=6551960294320693537 imbalance=1.002
+omp-static,1;32;0.7426;CHECK: OK
+# hash=6551960294320693537 imbalance=1.002
+omp-static,1;32;0.7367;CHECK: OK
+# hash=6551960294320693537 imbalance=1.002
+omp-dynamic,1;1;22.2676;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;1;22.2670;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;1;22.2641;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;2;11.1391;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;2;11.1386;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;2;11.1376;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;4;5.5718;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;4;5.5701;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;4;5.5711;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;8;2.7871;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-dynamic,1;8;2.7861;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;8;2.7860;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-dynamic,1;16;1.3965;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-dynamic,1;16;1.3948;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-dynamic,1;16;1.3948;CHECK: OK
+# hash=6551960294320693537 imbalance=1.001
+omp-dynamic,1;32;0.7364;CHECK: OK
+# hash=6551960294320693537 imbalance=1.010
+omp-dynamic,1;32;0.7308;CHECK: OK
+# hash=6551960294320693537 imbalance=1.012
+omp-dynamic,1;32;0.7305;CHECK: OK
+# hash=6551960294320693537 imbalance=1.011
+omp-guided;1;22.2698;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;1;22.2638;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;1;22.2666;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;2;11.1365;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;2;11.1368;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;2;11.1362;CHECK: OK
+# hash=6551960294320693537 imbalance=1.000
+omp-guided;4;9.6097;CHECK: OK
+# hash=6551960294320693537 imbalance=1.721
+omp-guided;4;9.6087;CHECK: OK
+# hash=6551960294320693537 imbalance=1.721
+omp-guided;4;9.6109;CHECK: OK
+# hash=6551960294320693537 imbalance=1.721
+omp-guided;8;4.8009;CHECK: OK
+# hash=6551960294320693537 imbalance=1.720
+omp-guided;8;4.8044;CHECK: OK
+# hash=6551960294320693537 imbalance=1.720
+omp-guided;8;4.8026;CHECK: OK
+# hash=6551960294320693537 imbalance=1.720
+omp-guided;16;2.3880;CHECK: OK
+# hash=6551960294320693537 imbalance=1.710
+omp-guided;16;2.3865;CHECK: OK
+# hash=6551960294320693537 imbalance=1.710
+omp-guided;16;2.3865;CHECK: OK
+# hash=6551960294320693537 imbalance=1.710
+omp-guided;32;1.2181;CHECK: OK
+# hash=6551960294320693537 imbalance=1.693
+omp-guided;32;1.2062;CHECK: OK
+# hash=6551960294320693537 imbalance=1.693
+omp-guided;32;1.2197;CHECK: OK
+# hash=6551960294320693537 imbalance=1.693
