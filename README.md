@@ -14,7 +14,7 @@ src/      mandel.h  seq.c  omp.c  mpi.c
 slurm/    omp.sbatch  mpi.sbatch
 scripts/  analyze.py
 logs/     *.out из Slurm, без правок
-plots/    speedup.png  efficiency.png
+plots/    speedup.png  efficiency.png  omp_imbalance.png  omp_chunk.png
 ```
 
 `mandel.h` общий для всех версий: параметры и функция расчёта одной точки. Поэтому результат во всех версиях совпадает побитово.
@@ -25,7 +25,7 @@ plots/    speedup.png  efficiency.png
 
 `seq` при первом запуске записывает эталон в `ref_4096.txt`. `omp` и `mpi` сверяются с ним и печатают `CHECK: OK`/`FAIL` (в строке вывода — `OK`/`FAIL`).
 
-Формат вывода: `version;p;time_s;CHECK`. Строки с `#` служебные, `#detail` у MPI показывает время счёта самого быстрого и самого медленного процесса и время сбора.
+Формат вывода: `version;p;time_s;CHECK`. Строки с `#` служебные. `#detail` у MPI показывает время счёта самого быстрого и самого медленного процесса и время сбора, у OpenMP — работу (сумму итераций) самого свободного и самого загруженного потока и дисбаланс = max / среднее.
 
 ## Декомпозиция в MPI
 
@@ -35,20 +35,33 @@ plots/    speedup.png  efficiency.png
 
 Для сравнения есть блочная раздача: `MANDEL_DIST=block`.
 
+## Расписания в OpenMP
+
+Цикл по строкам y распараллелен через `#pragma omp for schedule(runtime)`, расписание задаётся переменной `OMP_SCHEDULE`. Так все варианты сравниваются на одном бинарнике:
+
+| `OMP_SCHEDULE` | как раздаются строки |
+|---|---|
+| `static` | сплошными блоками по N/p строк, как `MANDEL_DIST=block` в MPI |
+| `static,1` | по кругу: поток t считает строки t, t+p, t+2p, …, как циклическая раздача в MPI |
+| `dynamic,1` | свободный поток берёт следующую строку из общей очереди |
+| `guided,1` | порции начинаются примерно с N/p строк и уменьшаются до 1 |
+
+Для дисбаланса каждый поток копит сумму своих итераций в локальной переменной и записывает её в массив один раз после цикла, поэтому гонок нет. Отдельная серия на 48 потоках сравнивает размер порции: chunk = 4, 16, 64 для `static`, `dynamic` и `guided`.
+
 ## Как воспроизвести на PARAM BILIM
 
 ```bash
 # на bilim-master (на вычислительных узлах нет заголовков C)
 module load intel/mpi/2021.14
-make
+make                         # bin/seq, bin/omp, bin/mpi + копия libgomp для узлов
 
 mkdir -p logs
 sbatch slurm/mpi.sbatch      # seq ×3 + MPI 1..64 процесса ×3, 2 узла
-sbatch slurm/omp.sbatch      # OpenMP 1..32 потока, static / dynamic,16 / guided
+sbatch slurm/omp.sbatch      # OpenMP 1..48 потоков ×3, static / static,1 / dynamic,1 / guided,1 + chunk 4/16/64
 squeue -u $USER
 
 # когда оба задания закончатся
-python3 scripts/analyze.py   # results.md + plots/
+python3 scripts/analyze.py   # results.md + plots/ (MPI и OpenMP на общих графиках)
 ```
 
 Для быстрой проверки на маленькой картинке: `MANDEL_N=512 ./bin/seq`, потом `MANDEL_N=512 ...` для остальных версий.

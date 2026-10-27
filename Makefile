@@ -3,7 +3,7 @@ CC     ?= gcc
 MPICC  ?= mpicc
 CFLAGS ?= -O3 -Wall
 
-all: bin/seq bin/omp bin/mpi
+all: bin/seq bin/omp bin/mpi bin/libgomp.so.1
 
 bin:
 	mkdir -p bin
@@ -16,6 +16,10 @@ bin/omp: src/omp.c src/mandel.h | bin
 
 bin/mpi: src/mpi.c src/mandel.h | bin
 	$(MPICC) $(CFLAGS) src/mpi.c -o $@ -lm
+
+# Копия OpenMP-рантайма для вычислительных узлов (omp.sbatch добавляет bin/ в LD_LIBRARY_PATH)
+bin/libgomp.so.1: bin/omp
+	cp -L "$$(ldd $< | awk '/libgomp/{print $$3}')" $@
 
 clean:
 	rm -rf bin
