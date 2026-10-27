@@ -1,83 +1,55 @@
-// Track 11: histogram + counting sort of 5*10^8 integers in [0, 256). OpenMP: atomic vs local histograms.
-// Build: gcc -O3 -fopenmp omp.c -o omp
-// Run:   OMP_NUM_THREADS=8 ./omp atomic|local
-// Output: version;p;time_s;CHECK, then a '#' line with the histogram and fill phase times.
-// Timed kernel = histogram + prefix sum + fill of the sorted array. Data generation and CHECK are not timed.
-
-#include <omp.h>
+// OpenMP-версия: строки картинки делятся между потоками, расписание задаётся
+// снаружи через OMP_SCHEDULE (schedule(runtime)), поэтому static / dynamic / guided
+// и размер порции сравниваются без перекомпиляции.
+// Сборка: gcc -O3 -fopenmp omp.c -o omp -lm
+//
+// Почему расписание важно: тяжёлые строки (через середину множества) идут подряд.
+// При static без chunk они достаются нескольким средним потокам, остальные ждут.
+// static,1 и dynamic,1 раздают строки вперемешку, и нагрузка выравнивается.
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <omp.h>
+#include "mandel.h"
 
-#include "hist.h"
+int main(void) {
+    int n = mandel_size();
+    int *img = malloc((size_t)n * n * sizeof(int));
+    int nt = omp_get_max_threads();
+    uint64_t *work = calloc(nt, sizeof(uint64_t));   // итераций на поток — для дисбаланса
+    if (!img || !work) { fprintf(stderr, "malloc failed\n"); return 1; }
 
-static long long hist[K], ref[K], cnt[K];
-static long start[K + 1];
-
-int main(int argc, char **argv) {
-    const char *mode = argc > 1 ? argv[1] : "";
-    const int atom = !strcmp(mode, "atomic");
-    if (!atom && strcmp(mode, "local")) {
-        fprintf(stderr, "usage: %s atomic | local\n", argv[0]);
-        return 1;
+    double t0 = omp_get_wtime();                      // замеряем только вычислительное ядро
+    #pragma omp parallel
+    {
+        uint64_t my = 0;                              // своя сумма у каждого потока, без гонок
+        #pragma omp for schedule(runtime)
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++) {
+                int it = mandel_pixel(x, y, n);
+                img[(long)y * n + x] = it;
+                my += it;
+            }
+        work[omp_get_thread_num()] = my;              // одна запись на поток после цикла
     }
-    int *a = malloc(N * sizeof *a), *out = malloc(N * sizeof *out);
-    if (!a || !out) {
-        fprintf(stderr, "out of memory\n");
-        return 1;
+    double t = omp_get_wtime() - t0;
+
+    const char *sched = getenv("OMP_SCHEDULE");
+    if (!sched) sched = "default";
+    printf("omp_%s;%d;%.6f;%s\n", sched, nt, t, mandel_check(mandel_checksum(img, n), 0));
+
+    // Строка для анализа: работа самого загруженного и самого свободного потока.
+    // imbalance = max / среднее (1.0 — идеальный баланс)
+    uint64_t wmin = work[0], wmax = work[0], wsum = 0;
+    for (int i = 0; i < nt; i++) {
+        if (work[i] < wmin) wmin = work[i];
+        if (work[i] > wmax) wmax = work[i];
+        wsum += work[i];
     }
+    printf("#detail;omp_%s;%d;work_min=%llu;work_max=%llu;imbalance=%.4f\n", sched, nt,
+           (unsigned long long)wmin, (unsigned long long)wmax,
+           wsum ? (double)wmax * nt / wsum : 1.0);
 
-    // First touch with the same static split as the kernel, so each thread's pages sit on its own NUMA node.
-#pragma omp parallel for schedule(static)
-    for (long i = 0; i < N; i++) {
-        a[i] = value(i);
-        out[i] = -1;  // not 0: gcc turns malloc + zero fill into calloc, leaving the pages untouched
-    }
-
-    double t0 = omp_get_wtime();
-    if (atom) {
-        // One shared histogram: every increment is a locked read-modify-write on a cache line all threads fight over.
-#pragma omp parallel for schedule(static)
-        for (long i = 0; i < N; i++) {
-#pragma omp atomic
-            hist[a[i]]++;
-        }
-    } else {
-        // Local histograms: each thread counts its block into its own h with the same count() as seq.c,
-        // then adds h to the shared hist once, so the hot loop has no atomics and no shared writes.
-#pragma omp parallel
-        {
-            long long h[K] = {0};
-            const int nt = omp_get_num_threads(), t = omp_get_thread_num();
-            const long q = (N + nt - 1) / nt;  // the same blocks as schedule(static) above
-            const long lo = t * q < N ? t * q : N, hi = lo + q < N ? lo + q : N;
-            count(a, lo, hi, h);
-#pragma omp critical
-            for (int b = 0; b < K; b++) hist[b] += h[b];
-        }
-    }
-    double t1 = omp_get_wtime();
-
-    // Counting sort: value b fills out[start[b] .. start[b+1]). K = 256, so the prefix sum stays sequential.
-    for (int b = 0; b < K; b++) start[b + 1] = start[b] + hist[b];
-#pragma omp parallel for schedule(static)
-    for (int b = 0; b < K; b++)
-        for (long j = start[b]; j < start[b + 1]; j++) out[j] = b;
-    double t2 = omp_get_wtime();
-
-    // CHECK: recount the input sequentially; hist must match, out must be sorted with the same counts.
-    for (long i = 0; i < N; i++) ref[a[i]]++;
-    int ok = 1;
-    for (long i = 0; i < N; i++) {
-        cnt[out[i]]++;
-        if (i && out[i - 1] > out[i]) ok = 0;
-    }
-    for (int b = 0; b < K; b++) ok &= hist[b] == ref[b] && cnt[b] == ref[b];
-
-    printf("%s;%d;%.4f;CHECK: %s\n", atom ? "omp-atomic" : "omp-local", omp_get_max_threads(), t2 - t0,
-           ok ? "OK" : "FAIL");
-    printf("# hist=%.4f fill=%.4f\n", t1 - t0, t2 - t1);
-    free(a);
-    free(out);
-    return !ok;
+    free(work);
+    free(img);
+    return 0;
 }

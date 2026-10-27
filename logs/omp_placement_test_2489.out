@@ -1,4 +1,0 @@
-a=0x7f2a9de64010 g=0x624000 rows=0x604000
-stack=0x7ffc1bfd0000 global=0.3231 stack=0.2594 stack64=0.2595 stack4k=0.2596 rows=0.2613 heap4k=0.2618
-stack=0x7ffc1bfd0000 global=0.3251 stack=0.2599 stack64=0.2605 stack4k=0.2613 rows=0.2611 heap4k=0.2595
-stack=0x7ffc1bfd0000 global=0.3243 stack=0.2595 stack64=0.2603 stack4k=0.2612 rows=0.2608 heap4k=0.2597
